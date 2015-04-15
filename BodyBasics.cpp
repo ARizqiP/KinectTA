@@ -44,6 +44,8 @@ float vectorLength(float, float);
 float vectorLength(D2D_VECTOR_2F );
 float vectorLength(D2D_VECTOR_3F);
 
+UINT64 readDelay = 20000000;
+
 IDWriteFactory* m_pDWriteFactory;
 IDWriteTextFormat* m_pTextFormat;
 
@@ -671,7 +673,7 @@ void CBodyBasics::processSemaphore(const Joint* pJoints, const D2D1_POINT_2F* pJ
 			}
 			tempCode[bodyIndex] = semaphoreDictionary[leftArmCode][rightArmCode];
 			//jika sudah sekian detik
-			if (nTime - timeInLetter[bodyIndex] >= 20000000){
+			if (nTime - timeInLetter[bodyIndex] >= readDelay){
 				//tetapkan
 				code[bodyIndex] = tempCode[bodyIndex];
 			}
