@@ -28,6 +28,7 @@ static WCHAR* semaphoreDictionary [8][8] = {
 	{ L"F", L"M", L"R", L"Y", L"J", L"W", L"", L"Z" },
 	{ L"G", L"N", L"S", L"!", L"V", L"X", L"Z", L"" }
 };
+static UINT64 seconds = 10000000;
 WCHAR* code [6];
 WCHAR* tempCode[6];
 bool inRest[6];
@@ -44,7 +45,22 @@ float vectorLength(float, float);
 float vectorLength(D2D_VECTOR_2F );
 float vectorLength(D2D_VECTOR_3F);
 
-UINT64 readDelay = 20000000;
+UINT64 readDelay = 2*seconds;
+int instructorBodyIndex = 0;
+
+//vectors stored: 
+//upperspine, neck, head,
+//leftshoulder, leftupperarm, leftlowerarm, leftpalm, leftfinger, leftthumb
+//rightshoulder, rightupperarm, rightlowerarm, rightpalm, rightfinger, rightthumb
+//lowerspine,
+//leftbutt, leftthigh, leftcalf, leftfoot
+//rightbutt, rightthigh, rightcalf, rightfoot
+D2D_VECTOR_3F instructorBodyVectors[] = {
+	{ 0, 0, 1 }, { 0, 0, 1 }, { 0, 0, 1 }, { 0, 0, 1 }, { 0, 0, 1 }, { 0, 0, 1 },
+	{ 0, 0, 1 }, { 0, 0, 1 }, { 0, 0, 1 }, { 0, 0, 1 }, { 0, 0, 1 }, { 0, 0, 1 },
+	{ 0, 0, 1 }, { 0, 0, 1 }, { 0, 0, 1 }, { 0, 0, 1 }, { 0, 0, 1 }, { 0, 0, 1 },
+	{ 0, 0, 1 }, { 0, 0, 1 }, { 0, 0, 1 }, { 0, 0, 1 }, { 0, 0, 1 }, { 0, 0, 1 }
+};
 
 IDWriteFactory* m_pDWriteFactory;
 IDWriteTextFormat* m_pTextFormat;
@@ -300,7 +316,7 @@ LRESULT CALLBACK CBodyBasics::DlgProc(HWND hWnd, UINT message, WPARAM wParam, LP
 				DWRITE_FONT_WEIGHT_NORMAL,
 				DWRITE_FONT_STYLE_NORMAL,
 				DWRITE_FONT_STRETCH_NORMAL,
-				50,
+				30,
 				L"", //locale
 				&m_pTextFormat
 				);
@@ -430,7 +446,7 @@ void CBodyBasics::ProcessBody(INT64 nTime, int nBodyCount, IBody** ppBodies)
 								jointPoints[j] = BodyToScreen(joints[j].Position, width, height);
 							}
 
-							processSemaphore(joints, jointPoints, i, nTime);
+							processMotion(joints, jointPoints, i, nTime);
 
 							DrawBody(joints, jointPoints);
 
@@ -697,12 +713,150 @@ void CBodyBasics::processSemaphore(const Joint* pJoints, const D2D1_POINT_2F* pJ
 		);
 }
 
+
+void CBodyBasics::processMotion(const Joint* pJoints, const D2D1_POINT_2F* pJointPoints, int bodyIndex, UINT64 nTime){
+	//calculate vectors for this body
+	D2D_VECTOR_3F bodyVectors[] = {
+		//upper spine vector
+		{ pJoints[JointType_SpineShoulder].Position.X - pJoints[JointType_SpineMid].Position.X, 
+		pJoints[JointType_SpineShoulder].Position.Y - pJoints[JointType_SpineMid].Position.Y, 
+		pJoints[JointType_SpineShoulder].Position.Z - pJoints[JointType_SpineMid].Position.Z },
+		//neck vector
+		{ pJoints[JointType_Neck].Position.X - pJoints[JointType_SpineShoulder].Position.X,
+		pJoints[JointType_Neck].Position.Y - pJoints[JointType_SpineShoulder].Position.Y,
+		pJoints[JointType_Neck].Position.Z - pJoints[JointType_SpineShoulder].Position.Z },
+		//head vector
+		{ pJoints[JointType_Head].Position.X - pJoints[JointType_Neck].Position.X,
+		pJoints[JointType_Head].Position.Y - pJoints[JointType_Neck].Position.Y,
+		pJoints[JointType_Head].Position.Z - pJoints[JointType_Neck].Position.Z },
+		//left shoulder vector
+		{ pJoints[JointType_ShoulderLeft].Position.X - pJoints[JointType_SpineShoulder].Position.X,
+		pJoints[JointType_ShoulderLeft].Position.Y - pJoints[JointType_SpineShoulder].Position.Y,
+		pJoints[JointType_ShoulderLeft].Position.Z - pJoints[JointType_SpineShoulder].Position.Z },
+		//left upper arm vector
+		{ pJoints[JointType_ElbowLeft].Position.X - pJoints[JointType_ShoulderLeft].Position.X,
+		pJoints[JointType_ElbowLeft].Position.Y - pJoints[JointType_ShoulderLeft].Position.Y,
+		pJoints[JointType_ElbowLeft].Position.Z - pJoints[JointType_ShoulderLeft].Position.Z },
+		//left lower arm vector
+		{ pJoints[JointType_WristLeft].Position.X - pJoints[JointType_ElbowLeft].Position.X,
+		pJoints[JointType_WristLeft].Position.Y - pJoints[JointType_ElbowLeft].Position.Y,
+		pJoints[JointType_WristLeft].Position.Z - pJoints[JointType_ElbowLeft].Position.Z },
+		//left palm vector
+		{ pJoints[JointType_HandLeft].Position.X - pJoints[JointType_WristLeft].Position.X,
+		pJoints[JointType_HandLeft].Position.Y - pJoints[JointType_WristLeft].Position.Y,
+		pJoints[JointType_HandLeft].Position.Z - pJoints[JointType_WristLeft].Position.Z },
+		//left finger vector
+		{ pJoints[JointType_HandTipLeft].Position.X - pJoints[JointType_HandLeft].Position.X,
+		pJoints[JointType_HandTipLeft].Position.Y - pJoints[JointType_HandLeft].Position.Y,
+		pJoints[JointType_HandTipLeft].Position.Z - pJoints[JointType_HandLeft].Position.Z },
+		//left thumb vector
+		{ pJoints[JointType_ThumbLeft].Position.X - pJoints[JointType_WristLeft].Position.X,
+		pJoints[JointType_ThumbLeft].Position.Y - pJoints[JointType_WristLeft].Position.Y,
+		pJoints[JointType_ThumbLeft].Position.Z - pJoints[JointType_WristLeft].Position.Z },
+		//Right shoulder vector
+		{ pJoints[JointType_ShoulderRight].Position.X - pJoints[JointType_SpineShoulder].Position.X,
+		pJoints[JointType_ShoulderRight].Position.Y - pJoints[JointType_SpineShoulder].Position.Y,
+		pJoints[JointType_ShoulderRight].Position.Z - pJoints[JointType_SpineShoulder].Position.Z },
+		//Right upper arm vector
+		{ pJoints[JointType_ElbowRight].Position.X - pJoints[JointType_ShoulderRight].Position.X,
+		pJoints[JointType_ElbowRight].Position.Y - pJoints[JointType_ShoulderRight].Position.Y,
+		pJoints[JointType_ElbowRight].Position.Z - pJoints[JointType_ShoulderRight].Position.Z },
+		//Right lower arm vector
+		{ pJoints[JointType_WristRight].Position.X - pJoints[JointType_ElbowRight].Position.X,
+		pJoints[JointType_WristRight].Position.Y - pJoints[JointType_ElbowRight].Position.Y,
+		pJoints[JointType_WristRight].Position.Z - pJoints[JointType_ElbowRight].Position.Z },
+		//Right palm vector
+		{ pJoints[JointType_HandRight].Position.X - pJoints[JointType_WristRight].Position.X,
+		pJoints[JointType_HandRight].Position.Y - pJoints[JointType_WristRight].Position.Y,
+		pJoints[JointType_HandRight].Position.Z - pJoints[JointType_WristRight].Position.Z },
+		//Right finger vector
+		{ pJoints[JointType_HandTipRight].Position.X - pJoints[JointType_HandRight].Position.X,
+		pJoints[JointType_HandTipRight].Position.Y - pJoints[JointType_HandRight].Position.Y,
+		pJoints[JointType_HandTipRight].Position.Z - pJoints[JointType_HandRight].Position.Z },
+		//Right thumb vector
+		{ pJoints[JointType_ThumbRight].Position.X - pJoints[JointType_WristRight].Position.X,
+		pJoints[JointType_ThumbRight].Position.Y - pJoints[JointType_WristRight].Position.Y,
+		pJoints[JointType_ThumbRight].Position.Z - pJoints[JointType_WristRight].Position.Z },
+		//Lower spine vector
+		{ pJoints[JointType_SpineBase].Position.X - pJoints[JointType_SpineMid].Position.X,
+		pJoints[JointType_SpineBase].Position.Y - pJoints[JointType_SpineMid].Position.Y,
+		pJoints[JointType_SpineBase].Position.Z - pJoints[JointType_SpineMid].Position.Z },
+		//Left buttock vector
+		{ pJoints[JointType_HipLeft].Position.X - pJoints[JointType_SpineBase].Position.X,
+		pJoints[JointType_HipLeft].Position.Y - pJoints[JointType_SpineBase].Position.Y,
+		pJoints[JointType_HipLeft].Position.Z - pJoints[JointType_SpineBase].Position.Z },
+		//Left thigh vector
+		{ pJoints[JointType_KneeLeft].Position.X - pJoints[JointType_HipLeft].Position.X,
+		pJoints[JointType_KneeLeft].Position.Y - pJoints[JointType_HipLeft].Position.Y,
+		pJoints[JointType_KneeLeft].Position.Z - pJoints[JointType_HipLeft].Position.Z },
+		//Left calf vector
+		{ pJoints[JointType_AnkleLeft].Position.X - pJoints[JointType_KneeLeft].Position.X,
+		pJoints[JointType_AnkleLeft].Position.Y - pJoints[JointType_KneeLeft].Position.Y,
+		pJoints[JointType_AnkleLeft].Position.Z - pJoints[JointType_KneeLeft].Position.Z },
+		//Left foot vector
+		{ pJoints[JointType_FootLeft].Position.X - pJoints[JointType_AnkleLeft].Position.X,
+		pJoints[JointType_FootLeft].Position.Y - pJoints[JointType_AnkleLeft].Position.Y,
+		pJoints[JointType_FootLeft].Position.Z - pJoints[JointType_AnkleLeft].Position.Z },
+		//Right buttock vector
+		{ pJoints[JointType_HipRight].Position.X - pJoints[JointType_SpineBase].Position.X,
+		pJoints[JointType_HipRight].Position.Y - pJoints[JointType_SpineBase].Position.Y,
+		pJoints[JointType_HipRight].Position.Z - pJoints[JointType_SpineBase].Position.Z },
+		//Right thigh vector
+		{ pJoints[JointType_KneeRight].Position.X - pJoints[JointType_HipRight].Position.X,
+		pJoints[JointType_KneeRight].Position.Y - pJoints[JointType_HipRight].Position.Y,
+		pJoints[JointType_KneeRight].Position.Z - pJoints[JointType_HipRight].Position.Z },
+		//Right calf vector
+		{ pJoints[JointType_AnkleRight].Position.X - pJoints[JointType_KneeRight].Position.X,
+		pJoints[JointType_AnkleRight].Position.Y - pJoints[JointType_KneeRight].Position.Y,
+		pJoints[JointType_AnkleRight].Position.Z - pJoints[JointType_KneeRight].Position.Z },
+		//Right foot vector
+		{ pJoints[JointType_FootRight].Position.X - pJoints[JointType_AnkleRight].Position.X,
+		pJoints[JointType_FootRight].Position.Y - pJoints[JointType_AnkleRight].Position.Y,
+		pJoints[JointType_FootRight].Position.Z - pJoints[JointType_AnkleRight].Position.Z },
+	};
+
+	WCHAR bodyMessage[10];
+
+	//If this body is instructor's, just store
+	if (bodyIndex == instructorBodyIndex){
+		for (int i = 0; i < sizeof(bodyIndex); i++)
+		{
+			instructorBodyVectors[i] = bodyVectors[i];
+		}
+		// and set message to mark that this is instructor
+		StringCchPrintf(bodyMessage, _countof(bodyMessage), L"Instructor");
+	}
+	//else calculate difference from instructor's
+	else
+	{
+		float sumAngle = 0;
+		for (int i = 0; i < 24; i++)
+		{
+			//sum each vector's angle to that of instructor's
+			sumAngle += abs(vectorAngle(bodyVectors[i], instructorBodyVectors[i]));
+		}
+		sumAngle = sumAngle * 180 / PI;
+		//and set the result as message
+		StringCchPrintf(bodyMessage, _countof(bodyMessage), L"%9.2f ", sumAngle);
+	}
+
+	//either way, display the message
+	m_pRenderTarget->DrawTextW(
+		bodyMessage,
+		10,
+		m_pTextFormat,
+		D2D1::RectF(pJointPoints[JointType_Head].x - 300, pJointPoints[JointType_Head].y - 50, pJointPoints[JointType_Head].x + 300, pJointPoints[JointType_Head].y),
+		m_pBrushHandOpen
+		);
+}
+
+
 float vectorAngle(D2D_VECTOR_2F a, D2D_VECTOR_2F b){
 	return cos(dotProduct(a, b) / (vectorLength(a)*vectorLength(b)));
 }
 
 float vectorAngle(D2D_VECTOR_3F a, D2D_VECTOR_3F b){
-	return cos(dotProduct(a, b) / (vectorLength(a)*vectorLength(b)));
+	return acos(dotProduct(a, b) / (vectorLength(a)*vectorLength(b)));
 }
 
 float dotProduct(D2D_VECTOR_2F a, D2D_VECTOR_2F b){

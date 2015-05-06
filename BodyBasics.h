@@ -161,5 +161,7 @@ private:
 	/// <param name="bodyIndex">index of body processed</param>
 /// <param name="nTime">timestamp of frame</param>
 	void CBodyBasics::processSemaphore(const Joint* pJoints, const D2D1_POINT_2F* pJointPoints, int bodyIndex, UINT64 nTime);
+
+	void CBodyBasics::processMotion(const Joint* pJoints, const D2D1_POINT_2F* pJointPoints, int bodyIndex, UINT64 nTime);
 };
 
